@@ -65,6 +65,23 @@ if not SECRET_KEY or not ADMIN_TOKEN:
 app = Flask(__name__)
 
 
+# The .ahk client (AutoHotkey, not a browser) never hit this, but a
+# browser page - like the admin key-issuer HTML - sends a preflight
+# OPTIONS request before any POST with a JSON body, and refuses to
+# send the real request unless that preflight comes back with these
+# headers. "*" is fine for all three endpoints here: /trial and
+# /activate aren't secret-bearing (they only report state, and
+# /activate needs an already-issued key to succeed), and /issue is
+# already gated by ADMIN_TOKEN - the origin was never doing the
+# protecting.
+@app.after_request
+def add_cors_headers(resp):
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    return resp
+
+
 def db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
